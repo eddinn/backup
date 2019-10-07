@@ -1,0 +1,10 @@
+/etc
+/var/www
+/var/named/chroot/etc
+/var/named/chroot/var/named
+/var/spool
+/var/log
+/var/lib
+/home
+/root
+/usr
