@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Backupscript for rdiff-backup with mysqlhotcopy and mysqldump
+# Backupscript for rdiff-backup with mysqldump
 # Author: Edvin Dunaway - edvin@eddinn.net
 #
 
@@ -21,10 +21,6 @@ export FILE_LIST="/path/to/backup-include-list"
 # MySQL settings
 export MYSQL_DIR='/var/lib/mysql'
 export MYSQL_BACKUP_DIR="$BACKUP_DEST_PATH/mysql"
-
-# What to output of the mysql hotcopy.
-# 0: Only errors, 1: "Pretty" output, 2: Everything
-OUTPUT_LEVEL=1
 
 # Set rdiff-backup cleanup setting (removes all older then n days)
 # The time interval is an integer followed by the character s, m, h, D, W, M, or  Y,
@@ -63,39 +59,30 @@ for DIR in $_DBS; do
 	fi
 done
 
-# Hotcopying and manually exporting all DBs (except test and performance_schema) to MYSQL_BACKUP_DIR
-echo -e "\\nStarting hotcopying DBs and then we'll also do a manual export of the DBs into .sql files:"  
+# Exporting all DBs (except test and performance_schema) to MYSQL_BACKUP_DIR
+echo -e "\\nStarting export of DBs into .sql files:"  
 for DB in $_DBS; do
-	if [ $OUTPUT_LEVEL -eq 1 ]; then echo -n "Hotcopying and exporting of DB $DB"; fi
-	if [ $OUTPUT_LEVEL -le 1 ]; then QUIET='-q'; fi
-
-	_DBEXPORT=$(mysqlhotcopy --allowold $QUIET "$DB" "$MYSQL_BACKUP_DIR"/"$DB" && mysqldump "$DB" > "$MYSQL_BACKUP_DIR"/"$DB"/"$DB".sql 2>&1)
+	echo -n "Exporting DB $DB"
+	
+	_DBEXPORT=$(mysqldump "$DB" > "$MYSQL_BACKUP_DIR"/"$DB"/"$DB".sql 2>&1)
 	_EXIT=$?
 	_FAILED=0
 
 	# Validate the exit code
 	if [ $_EXIT -eq 0 ]; then
-		if [ $OUTPUT_LEVEL -eq 1 ]; then 
-			echo -e " finished!"
-		elif [ $OUTPUT_LEVEL -eq 2 ]; then
-			echo -e "$_DBEXPORT"
-		fi
+		echo -e " finished!"
 	else
 		_FAILED=$(( _FAILED + 1 ))
-		if [ $OUTPUT_LEVEL -eq 1 ]; then
-			echo -e " failed!"
-			echo -e "$_DBEXPORT" 1>&2
-		else
-			echo -e "$_DBEXPORT" 1>&2
-		fi
+		echo -e " failed!"
+		echo -e "$_DBEXPORT" 1>&2
 	fi
 done
 
 # Show results
 if [ "$_FAILED" -eq 0 ]; then
-	if [ "$OUTPUT_LEVEL" -ge 1 ]; then echo -e "\\nMySQL DB export"; fi
+	echo -e "\\nMySQL DB exported"
 else
-	echo -e "\\nFailed to hotcopy and export $_FAILED DBs!"
+	echo -e "\\nFailed to export $_FAILED DBs!"
 fi
 
 echo -e "\\nMySQL backup finished; Now running rdiff-backup on system data:"
